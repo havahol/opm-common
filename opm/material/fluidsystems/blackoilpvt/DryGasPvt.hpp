@@ -30,6 +30,7 @@
 #include <opm/material/Constants.hpp>
 
 #include <opm/material/common/Tabulated1DFunction.hpp>
+#include <opm/common/utility/VectorWithDefaultAllocator.hpp>
 
 #include <cstddef>
 #include <vector>
@@ -43,13 +44,15 @@ class Schedule;
  * \brief This class represents the Pressure-Volume-Temperature relations of the gas phase
  *        without vaporized oil.
  */
-template <class Scalar>
+template <class Scalar, 
+          template<class> class Storage = VectorWithDefaultAllocator,
+          template<class> class TableStorage = VectorWithDefaultAllocator>
 class DryGasPvt
 {
     using SamplingPoints = std::vector<std::pair<Scalar, Scalar>>;
 
 public:
-    using TabulatedOneDFunction = Tabulated1DFunction<Scalar>;
+    using TabulatedOneDFunction = Tabulated1DFunction<Scalar, TableStorage>;
 
     /*!
      * \brief Initialize the parameters for dry gas using an ECL deck.
@@ -254,20 +257,20 @@ public:
     Scalar gasReferenceDensity(unsigned regionIdx) const
     { return gasReferenceDensity_[regionIdx]; }
 
-    const std::vector<TabulatedOneDFunction>& inverseGasB() const
+    const Storage<TabulatedOneDFunction>& inverseGasB() const
     { return inverseGasB_; }
 
-    const std::vector<TabulatedOneDFunction>& gasMu() const
+    const Storage<TabulatedOneDFunction>& gasMu() const
     { return gasMu_; }
 
-    const std::vector<TabulatedOneDFunction>& inverseGasBMu() const
+    const Storage<TabulatedOneDFunction>& inverseGasBMu() const
     { return inverseGasBMu_; }
 
 private:
-    std::vector<Scalar> gasReferenceDensity_{};
-    std::vector<TabulatedOneDFunction> inverseGasB_{};
-    std::vector<TabulatedOneDFunction> gasMu_{};
-    std::vector<TabulatedOneDFunction> inverseGasBMu_{};
+    Storage<Scalar> gasReferenceDensity_{};
+    Storage<TabulatedOneDFunction> inverseGasB_{};
+    Storage<TabulatedOneDFunction> gasMu_{};
+    Storage<TabulatedOneDFunction> inverseGasBMu_{};
 };
 
 } // namespace Opm
