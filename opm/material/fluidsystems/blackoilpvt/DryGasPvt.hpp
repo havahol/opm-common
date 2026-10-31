@@ -116,7 +116,11 @@ class DryGasPvt
 public:
     using TabulatedOneDFunction = Tabulated1DFunction<Scalar, TableStorage>;
 
-    //! True for the CPU object. 
+    //! True for the CPU object. Used to restrict the host-only setters that would otherwise
+    //! compile for a GPU instantiation and then write device memory from the host
+    //! (setReferenceDensities() and setGasViscosity()). The other host-only methods are
+    //! defined in the .cpp file for CPU storage only, so misusing them already fails at
+    //! link time.
     static constexpr bool isCpuStorage
         = std::is_same_v<Storage<Scalar>, VectorWithDefaultAllocator<Scalar>>
        && std::is_same_v<TableStorage<Scalar>, VectorWithDefaultAllocator<Scalar>>;
@@ -159,6 +163,7 @@ public:
                                Scalar /*rhoRefOil*/,
                                Scalar rhoRefGas,
                                Scalar /*rhoRefWater*/)
+        requires isCpuStorage
     {
         gasReferenceDensity_[regionIdx] = rhoRefGas;
     }
@@ -178,6 +183,7 @@ public:
      * This is a function of \f$(p_g)\f$...
      */
     void setGasViscosity(unsigned regionIdx, const TabulatedOneDFunction& mug)
+        requires isCpuStorage
     { gasMu_[regionIdx] = mug; }
 
     /*!
