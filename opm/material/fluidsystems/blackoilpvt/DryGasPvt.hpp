@@ -146,6 +146,9 @@ public:
 
     static_assert(isCpuStorage || isGpuTableOwner || isOwningGpu || isGpuView,
                   "DryGasPvt: unsupported combination of Storage and TableStorage");
+
+    DryGasPvt() = default;
+
     /*!
      * \brief Initialize the parameters for dry gas using an ECL deck.
      *
