@@ -216,7 +216,7 @@ public:
 
     OPM_HOST_DEVICE Scalar hVap(unsigned) const
     {
-        OPM_THROW(std::runtime_error, "Requested the hvap of oil but the thermal "
+        OPM_THROW(std::runtime_error, "Requested the hvap of gas but the thermal "
                                       "option is not enabled");
     }
     /*!
