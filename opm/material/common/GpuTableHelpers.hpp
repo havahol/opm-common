@@ -21,6 +21,9 @@
  * their tables into device memory directly: each table owns GpuBuffers, which are
  * host-side handles. Instead, each table is uploaded to its own owning GPU table, kept
  * in a host-side std::vector, and views into these tables are uploaded as one GpuBuffer.
+ *
+ * The header of every table type used with these helpers must be included below. When a
+ * new table type is ported to the GPU, add its header there.
  */
 #ifndef OPM_GPU_TABLE_HELPERS_HPP
 #define OPM_GPU_TABLE_HELPERS_HPP

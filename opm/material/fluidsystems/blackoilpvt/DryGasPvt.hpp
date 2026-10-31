@@ -442,14 +442,18 @@ copy_to_gpu(const DryGasPvt<ScalarT>& cpu)
     OPM_ERROR_IF(!initialized,
                  "copy_to_gpu: DryGasPvt is not initialized (call initFromState() or initEnd() first).");
 
-    // Upload the tables to the GPU
+    // Upload the tables to the GPU.
+    // Not std::make_unique: the constructor is private, and std::make_unique is not a friend.
     std::unique_ptr<GpuTables> tables(new GpuTables(typename GpuTables::GpuTablesStorage{},
                                                     std::vector<ScalarT>(cpu.gasReferenceDensity_),
                                                     copy_each_to_gpu(cpu.inverseGasB_),
                                                     copy_each_to_gpu(cpu.gasMu_),
                                                     copy_each_to_gpu(cpu.inverseGasBMu_)));
 
-    // Upload vectors of GPU views to the GPU
+    // Upload vectors of GPU views to the GPU.
+    // Everything that reads through `tables` is done before `tables` is moved into the
+    // returned object: the order in which function arguments are evaluated is
+    // unspecified, so reading and moving `tables` in the same call would be a bug.
     auto gasReferenceDensity = GpuBuffer<ScalarT>(tables->gasReferenceDensity_);
     auto inverseGasB = make_view_buffer(tables->inverseGasB_);
     auto gasMu = make_view_buffer(tables->gasMu_);
