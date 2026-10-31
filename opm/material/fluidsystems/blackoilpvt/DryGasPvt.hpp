@@ -41,6 +41,9 @@
 #include <algorithm>
 #include <cstddef>
 #include <memory>
+#include <stdexcept>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace Opm {
