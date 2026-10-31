@@ -109,7 +109,7 @@ namespace gpuistl {
  * The owning GPU object must outlive every kernel that uses a view made from it. Moving
  * it does not invalidate such views.
  */
-template <class Scalar, 
+template <class Scalar,
           template<class> class Storage,
           template<class> class TableStorage>
 class DryGasPvt
@@ -276,7 +276,7 @@ public:
         const auto& invBg = this->inverseGasB_[regionIdx].eval(p, SegmentIndex{segIdx});
         const auto& invMugBg = this->inverseGasBMu_[regionIdx].eval(p, SegmentIndex{segIdx});
         return { invBg, invBg / invMugBg };
-   }
+    }
 
     /*!
      * \brief Returns the formation volume factor [-] of oil saturated gas at given pressure.
@@ -374,7 +374,7 @@ private:
     Storage<TabulatedOneDFunction> gasMu_{};
     Storage<TabulatedOneDFunction> inverseGasBMu_{};
 
-    #if HAVE_CUDA
+#if HAVE_CUDA
     /*!
      * \brief Constructor for the GPU objects, used by gpuistl::copy_to_gpu() and
      *        gpuistl::make_view().
@@ -384,10 +384,10 @@ private:
      *                  For the other GPU objects this is the empty storage; pass {}.
      */
     DryGasPvt(GpuTablesStorage&& gpuTables,
-               Storage<Scalar>&& gasReferenceDensity,
-               Storage<TabulatedOneDFunction>&& inverseGasB,
-               Storage<TabulatedOneDFunction>&& gasMu,
-               Storage<TabulatedOneDFunction>&& inverseGasBMu)
+              Storage<Scalar>&& gasReferenceDensity,
+              Storage<TabulatedOneDFunction>&& inverseGasB,
+              Storage<TabulatedOneDFunction>&& gasMu,
+              Storage<TabulatedOneDFunction>&& inverseGasBMu)
         requires (!isCpuStorage)
         : gpuTables_(std::move(gpuTables))
         , gasReferenceDensity_(std::move(gasReferenceDensity))
@@ -423,10 +423,11 @@ namespace Opm::gpuistl {
  * \return An owning GPU object. It is move-only. Use make_view() to obtain an object
  *         that can be passed to kernels; the owning GPU object must outlive every
  *         kernel that uses such a view.
-*/
+ */
 template <class ScalarT>
 DryGasPvt<ScalarT, GpuBuffer, GpuView>
-copy_to_gpu(const DryGasPvt<ScalarT>& cpu) {
+copy_to_gpu(const DryGasPvt<ScalarT>& cpu)
+{
     using GpuTables = DryGasPvt<ScalarT, VectorWithDefaultAllocator, GpuBuffer>;
     using GpuPvt = DryGasPvt<ScalarT, GpuBuffer, GpuView>;
 
@@ -466,7 +467,8 @@ copy_to_gpu(const DryGasPvt<ScalarT>& cpu) {
  */
 template <class ScalarT>
 DryGasPvt<ScalarT, GpuView, GpuView>
-make_view(DryGasPvt<ScalarT, GpuBuffer, GpuView>& gpuPvt) {
+make_view(DryGasPvt<ScalarT, GpuBuffer, GpuView>& gpuPvt)
+{
     using GpuPvtView = DryGasPvt<ScalarT, GpuView, GpuView>;
     static_assert(std::is_trivially_copyable_v<GpuPvtView>,
                   "The view is passed by value to kernels.");
