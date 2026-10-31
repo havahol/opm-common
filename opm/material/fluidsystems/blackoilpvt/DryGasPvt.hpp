@@ -29,14 +29,18 @@
 
 #include <opm/material/Constants.hpp>
 
+#include <opm/common/ErrorMacros.hpp>
 #include <opm/common/utility/gpuDecorators.hpp>
 #include <opm/common/utility/gpuistl_if_available.hpp>
 #include <opm/common/utility/VectorWithDefaultAllocator.hpp>
 
 #include <opm/material/common/ConditionalStorage.hpp>
+#include <opm/material/common/GpuTableHelpers.hpp>
 #include <opm/material/common/Tabulated1DFunction.hpp>
 
+#include <algorithm>
 #include <cstddef>
+#include <memory>
 #include <vector>
 
 namespace Opm {
@@ -392,6 +396,81 @@ private:
     gpuistl::make_view(DryGasPvt<ScalarT, gpuistl::GpuBuffer, gpuistl::GpuView>&);
 #endif // HAVE_CUDA
 };
+
 } // namespace Opm
+
+#if HAVE_CUDA
+namespace Opm::gpuistl {
+
+/*!
+ * \brief Copy a CPU DryGasPvt to the GPU.
+ *
+ * Each per-region table is uploaded to its own GpuBuffer-based table. These tables are
+ * held by a device table owner (DryGasPvt<ScalarT, VectorWithDefaultAllocator,
+ * GpuBuffer>), which the returned object owns. The views into these tables are then
+ * collected on the host and uploaded as one GpuBuffer per table member.
+ *
+ * \param cpu A fully initialized CPU object (i.e. initEnd() has been called).
+ * \return An owning GPU object. It is move-only. Use make_view() to obtain an object
+ *         that can be passed to kernels; the owning GPU object must outlive every
+ *         kernel that uses such a view.
+*/
+template <class ScalarT>
+DryGasPvt<ScalarT, GpuBuffer, GpuView>
+copy_to_gpu(const DryGasPvt<ScalarT>& cpu) {
+    using GpuTables = DryGasPvt<ScalarT, VectorWithDefaultAllocator, GpuBuffer>;
+    using GpuPvt = DryGasPvt<ScalarT, GpuBuffer, GpuView>;
+
+    // inverseGasBMu_ is only filled by initEnd(); after setNumRegions() alone its
+    // tables are empty.
+    const bool initialized = cpu.numRegions() > 0
+        && std::ranges::none_of(cpu.inverseGasBMu(),
+                                [](const auto& table) { return table.numSamples() == 0; });
+    OPM_ERROR_IF(!initialized,
+                 "copy_to_gpu: DryGasPvt is not initialized (call initFromState() or initEnd() first).");
+
+    // Upload the tables to the GPU
+    std::unique_ptr<GpuTables> tables(new GpuTables(typename GpuTables::GpuTablesStorage{},
+                                                    std::vector<ScalarT>(cpu.gasReferenceDensity_),
+                                                    copy_each_to_gpu(cpu.inverseGasB_),
+                                                    copy_each_to_gpu(cpu.gasMu_),
+                                                    copy_each_to_gpu(cpu.inverseGasBMu_)));
+
+    // Upload vectors of GPU views to the GPU
+    auto gasReferenceDensity = GpuBuffer<ScalarT>(tables->gasReferenceDensity_);
+    auto inverseGasB = make_view_buffer(tables->inverseGasB_);
+    auto gasMu = make_view_buffer(tables->gasMu_);
+    auto inverseGasBMu = make_view_buffer(tables->inverseGasBMu_);
+
+    return GpuPvt(typename GpuPvt::GpuTablesStorage(std::move(tables)),
+                  std::move(gasReferenceDensity),
+                  std::move(inverseGasB),
+                  std::move(gasMu),
+                  std::move(inverseGasBMu));
+}
+
+/*!
+ * \brief Create a GPU view of an owning GPU DryGasPvt.
+ *
+ * The view can be passed by value to kernels. It does not own any memory, so
+ * \p gpuPvt must outlive every use of the view.
+ */
+template <class ScalarT>
+DryGasPvt<ScalarT, GpuView, GpuView>
+make_view(DryGasPvt<ScalarT, GpuBuffer, GpuView>& gpuPvt) {
+    using GpuPvtView = DryGasPvt<ScalarT, GpuView, GpuView>;
+    static_assert(std::is_trivially_copyable_v<GpuPvtView>,
+                  "The view is passed by value to kernels.");
+
+    return GpuPvtView(typename GpuPvtView::GpuTablesStorage{},
+                      make_view(gpuPvt.gasReferenceDensity_),
+                      make_view(gpuPvt.inverseGasB_),
+                      make_view(gpuPvt.gasMu_),
+                      make_view(gpuPvt.inverseGasBMu_));
+}
+
+} // namespace Opm::gpuistl
+#endif // HAVE_CUDA
+
 
 #endif
